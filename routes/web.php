@@ -16,10 +16,14 @@ use App\Task;
 
 // Show Tasks
 Route::get('/', function () {
-    $tasks = Task::orderBy('created_at', 'asc')->get();
+    $tasks = Cache::rememberForever('all_tasks', function () {
+        return Task::orderBy('created_at', 'asc')->get();
+    });
+    $stats = Cache::getMemcached()->getStats();
 
     return view('tasks', [
-        'tasks' => $tasks
+        'tasks' => $tasks,
+        'stats' => array_pop($stats)
     ]);
 });
 
@@ -41,12 +45,16 @@ Route::post('/task', function (Request $request) {
     $task->name = $request->name;
     $task->save();
 
+    Cache::forget('all_tasks');
+
     return redirect('/');
 });
 
 // Delete Task
 Route::delete('/task/{task}', function (Task $task) {
-  $task->delete();
+    $task->delete();
 
-  return redirect('/');
+    Cache::forget('all_tasks');
+
+    return redirect('/');
 });
